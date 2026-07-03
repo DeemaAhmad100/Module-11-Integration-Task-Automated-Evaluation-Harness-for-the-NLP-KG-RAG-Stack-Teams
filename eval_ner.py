@@ -27,7 +27,7 @@ from typing import Tuple
 
 import httpx
 
-from lib.ner_scorer import compute_micro_f1
+from lib.ner_scorer import compute_micro_f1, score_document
 
 
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
@@ -42,11 +42,41 @@ def load_fixture():
 
 def run() -> Tuple[float, float, float, list]:
     """Run the harness end-to-end. Returns (precision, recall, f1, per_doc_results)."""
-    # TODO: implement per the methodology.
-    # Steps:
-    #   1. Load the gold fixture.
-    #   2. For each document, POST /extract and collect the returned entities.
-    #   3. Build per-document prediction and gold mappings keyed by document_id.
-    #   4. Compute micro-averaged F1 across all documents and return the scores
-    #      plus per-document data for the report.
-    raise NotImplementedError
+    fixture = load_fixture()
+
+    predictions_by_doc = {}
+    gold_by_doc = {}
+    per_doc_results = []
+
+    with httpx.Client(base_url=API_URL, timeout=60.0) as client:
+        for doc in fixture:
+            document_id = doc["document_id"]
+            text = doc["text"]
+            gold_entities = doc["gold_entities"]
+
+            resp = client.post("/extract", json={"text": text})
+            resp.raise_for_status()
+            predicted_entities = resp.json().get("entities", [])
+
+            predictions_by_doc[document_id] = predicted_entities
+            gold_by_doc[document_id] = gold_entities
+
+            tp, fp, fn = score_document(predicted_entities, gold_entities)
+
+            per_doc_results.append({
+                "document_id": document_id,
+                "predicted_entities": predicted_entities,
+                "gold_entities": gold_entities,
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+            })
+
+    precision, recall, f1 = compute_micro_f1(predictions_by_doc, gold_by_doc)
+
+    return precision, recall, f1, per_doc_results
+
+
+if __name__ == "__main__":
+    p, r, f1, results = run()
+    print(f"NER Precision={p:.4f} Recall={r:.4f} F1={f1:.4f}")
