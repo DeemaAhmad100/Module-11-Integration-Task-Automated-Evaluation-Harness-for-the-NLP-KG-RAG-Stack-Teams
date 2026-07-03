@@ -42,12 +42,57 @@ def load_fixture():
 
 def run() -> Tuple[float, list]:
     """Run the harness end-to-end. Returns (grounding_rate, per_question_results)."""
-    # TODO: implement per the methodology.
-    # Steps:
-    #   1. Load the fixture.
-    #   2. For each question, POST /rag/answer with the question and k.
-    #   3. Check is_decline first; if True, exclude from denominator.
-    #   4. Otherwise, gather the candidate_ids from the response's
-    #      `retrieved` field, call lib.grounding_scorer.is_grounded.
-    #   5. Aggregate grounding_rate = grounded / (total - declined).
-    raise NotImplementedError
+    fixture = load_fixture()
+    results = []
+    grounded_count = 0
+    declined = 0
+
+    for item in fixture:
+        question_id = item["question_id"]
+        question = item["question"]
+        k = item.get("k", 4)
+
+        resp = httpx.post(
+            f"{API_URL}/rag/answer", json={"question": question, "k": k}, timeout=60.0
+        )
+        resp.raise_for_status()
+        response_json = resp.json()
+
+        if is_decline(response_json):
+            declined += 1
+            results.append({
+                "question_id": question_id,
+                "question": question,
+                "answer": response_json.get("answer"),
+                "citations": response_json.get("citations", []),
+                "status": "declined",
+                "passed": None,
+            })
+            continue
+
+        candidate_ids = [
+            entry.get("chunk_id") for entry in response_json.get("retrieved", [])
+        ]
+        grounded = is_grounded(response_json, candidate_ids)
+        if grounded:
+            grounded_count += 1
+
+        results.append({
+            "question_id": question_id,
+            "question": question,
+            "answer": response_json.get("answer"),
+            "citations": response_json.get("citations", []),
+            "candidate_ids": candidate_ids,
+            "status": "answered",
+            "passed": grounded,
+        })
+
+    denominator = len(fixture) - declined
+    grounding_rate = grounded_count / denominator if denominator > 0 else 0.0
+
+    return grounding_rate, results
+
+
+if __name__ == "__main__":
+    rate, results = run()
+    print(f"RAG grounding rate: {rate:.4f}")

@@ -48,29 +48,28 @@ def run() -> Tuple[float, float, float, list]:
     gold_by_doc = {}
     per_doc_results = []
 
-    with httpx.Client(base_url=API_URL, timeout=60.0) as client:
-        for doc in fixture:
-            document_id = doc["document_id"]
-            text = doc["text"]
-            gold_entities = doc["gold_entities"]
+    for doc in fixture:
+        document_id = doc["document_id"]
+        text = doc["text"]
+        gold_entities = doc["gold_entities"]
 
-            resp = client.post("/extract", json={"text": text})
-            resp.raise_for_status()
-            predicted_entities = resp.json().get("entities", [])
+        resp = httpx.post(f"{API_URL}/extract", json={"text": text}, timeout=60.0)
+        resp.raise_for_status()
+        predicted_entities = resp.json().get("entities", [])
 
-            predictions_by_doc[document_id] = predicted_entities
-            gold_by_doc[document_id] = gold_entities
+        predictions_by_doc[document_id] = predicted_entities
+        gold_by_doc[document_id] = gold_entities
 
-            tp, fp, fn = score_document(predicted_entities, gold_entities)
+        tp, fp, fn = score_document(predicted_entities, gold_entities)
 
-            per_doc_results.append({
-                "document_id": document_id,
-                "predicted_entities": predicted_entities,
-                "gold_entities": gold_entities,
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-            })
+        per_doc_results.append({
+            "document_id": document_id,
+            "predicted_entities": predicted_entities,
+            "gold_entities": gold_entities,
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+        })
 
     precision, recall, f1 = compute_micro_f1(predictions_by_doc, gold_by_doc)
 
