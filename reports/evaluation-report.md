@@ -200,6 +200,6 @@ Methodology Rule.
 
 | Endpoint | p95 Latency (s) | Error Rate | Request Count |
 |---|---|---|---|
-| /extract | 0.0485 | 0.0000 | 182.0 |
-| /kg/query | 0.0482 | 0.0625 | 128.0 |
-| /rag/answer | 0.0485 | 0.0000 | 154.0 |
+| /extract | 0.0049 | 0.0000 | 90.0 |
+| /kg/query | 0.0047 | 0.0400 | 75.0 |
+| /rag/answer | 0.0048 | 0.0000 | 60.0 |
