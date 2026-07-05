@@ -62,10 +62,10 @@ def assemble_report(ner_result, kg_result, rag_result, metrics_signals) -> str:
     lines.append(f"- **NL->Cypher Exact-Match**: {kg_rate:.4f}")
     lines.append(f"- **RAG Grounding Rate**: {rag_rate:.4f}\n")
 
- # ---- Per-Endpoint Detail ----
+    # ---- Per-Endpoint Detail ----
     lines.append("## Per-Endpoint Detail\n")
 
-     # NER -- endpoint /extract
+    # NER -- endpoint /extract
     lines.append("### NER (`/extract`) -- Per-Document Results\n")
     lines.extend(_render_table(ner_details))
     lines.append("")
@@ -74,8 +74,7 @@ def assemble_report(ner_result, kg_result, rag_result, metrics_signals) -> str:
         lines.append(f"- {d}")
     lines.append("")
 
-
-# KG -- endpoint /kg/query
+    # KG -- endpoint /kg/query
     lines.append("### NL->Cypher (`/kg/query`) -- Per-Question Results\n")
     lines.extend(_render_table(kg_details))
     lines.append("")
@@ -84,7 +83,7 @@ def assemble_report(ner_result, kg_result, rag_result, metrics_signals) -> str:
         lines.append(f"- {d}")
     lines.append("")
 
- # RAG -- endpoint /rag/answer
+    # RAG -- endpoint /rag/answer
     lines.append("### RAG (`/rag/answer`) -- Per-Question Results\n")
     lines.extend(_render_table(rag_details))
     lines.append("")
@@ -92,7 +91,6 @@ def assemble_report(ner_result, kg_result, rag_result, metrics_signals) -> str:
     for d in _sample_failures(rag_details):
         lines.append(f"- {d}")
     lines.append("")
-
 
     # ---- Methodologies (copied verbatim from docstrings) ----
     lines.append("## Methodologies\n")
@@ -102,10 +100,6 @@ def assemble_report(ner_result, kg_result, rag_result, metrics_signals) -> str:
     lines.append(f"```\n{eval_kg.__doc__.strip()}\n```\n")
     lines.append("### RAG Grounding Rate\n")
     lines.append(f"```\n{eval_rag.__doc__.strip()}\n```\n")
-
-   
-
-    
 
     # ---- Derived /metrics Signals ----
     lines.append("## Derived /metrics Signals\n")
