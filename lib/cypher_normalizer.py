@@ -10,6 +10,8 @@ The split between this module and eval_kg.py exists so the normalization logic
 is unit-testable without a live backend.
 """
 
+import re
+
 
 KEYWORDS = (
     "MATCH",
@@ -27,6 +29,10 @@ def normalize_cypher(s: str) -> str:
     collapse and keyword uppercasing. See the module docstring for the full
     methodology paragraph.
     """
-    # TODO: implement per the methodology. The keyword list is closed (the W9B
-    # mapper's vocabulary).
-    raise NotImplementedError
+    normalized = re.sub(r"\s+", " ", s).strip()
+
+    for keyword in KEYWORDS:
+        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+        normalized = pattern.sub(keyword, normalized)
+
+    return normalized

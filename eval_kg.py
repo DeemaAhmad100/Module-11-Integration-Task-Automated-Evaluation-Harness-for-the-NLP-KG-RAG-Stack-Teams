@@ -40,13 +40,65 @@ def load_fixture():
 
 def run() -> Tuple[float, list]:
     """Run the harness end-to-end. Returns (exact_match_rate, per_question_results)."""
-    # TODO: implement per the methodology.
-    # Steps:
-    #   1. Load the fixture.
-    #   2. For each question, POST /kg/query with {"question": q}.
-    #   3. If the response is 422 with UnsupportedQueryError, mark the question
-    #      "excluded" -- do not count it in the denominator.
-    #   4. Otherwise, read the returned cypher field, normalize both predicted
-    #      and gold via lib.cypher_normalizer.normalize_cypher, compare.
-    #   5. Aggregate exact-match rate = matched / (total - excluded).
-    raise NotImplementedError
+    fixture = load_fixture()
+    results = []
+    matched = 0
+    excluded = 0
+
+    for item in fixture:
+        question_id = item["question_id"]
+        question = item["question"]
+        gold_cypher = item["gold_cypher"]
+
+        resp = httpx.post(f"{API_URL}/kg/query", json={"question": question}, timeout=60.0)
+
+        if resp.status_code == 422:
+            excluded += 1
+            results.append({
+                "question_id": question_id,
+                "question": question,
+                "gold_cypher": gold_cypher,
+                "predicted_cypher": None,
+                "status": "excluded_unsupported",
+                "passed": None,
+            })
+            continue
+
+        if resp.status_code >= 500:
+            results.append({
+                "question_id": question_id,
+                "question": question,
+                "gold_cypher": gold_cypher,
+                "predicted_cypher": None,
+                "status": "server_error",
+                "passed": False,
+            })
+            continue
+
+        resp.raise_for_status()
+        predicted_cypher = resp.json().get("cypher", "")
+
+        norm_pred = normalize_cypher(predicted_cypher)
+        norm_gold = normalize_cypher(gold_cypher)
+        passed = norm_pred == norm_gold
+        if passed:
+            matched += 1
+
+        results.append({
+            "question_id": question_id,
+            "question": question,
+            "gold_cypher": gold_cypher,
+            "predicted_cypher": predicted_cypher,
+            "status": "scored",
+            "passed": passed,
+        })
+
+    denominator = len(fixture) - excluded
+    exact_match_rate = matched / denominator if denominator > 0 else 0.0
+
+    return exact_match_rate, results
+
+
+if __name__ == "__main__":
+    rate, results = run()
+    print(f"KG NL->Cypher exact-match: {rate:.4f}")
